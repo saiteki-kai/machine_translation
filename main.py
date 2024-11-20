@@ -1,116 +1,31 @@
-import typing as t
+import argparse
 
-import torch
+from pathlib import Path
 
 from datasets import load_dataset
-from tqdm import tqdm
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    GenerationConfig,
-    PreTrainedModel,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-)
+from transformers import GenerationConfig
 
-from utils import get_language_name, get_xalma_model_name_by_group, get_xalma_model_name_by_lang
-
-
-class Translator:
-    model: PreTrainedModel | t.Callable
-    tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast
-
-    def __init__(self, model_name: str):
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
-
-        self.model = torch.compile(self.model, mode="reduce-overhead")
-
-    def _prepare_prompt(self, prompt: str) -> str:
-        return prompt
-
-    def _prepare_data(self, text: str, max_length: int = 512) -> dict[str, torch.Tensor]:
-        prompt = self._prepare_prompt(text)
-
-        encoded_inputs = self.tokenizer(
-            prompt,
-            return_tensors="pt",
-            padding=True,
-            max_length=max_length,
-            truncation=True,
-        )
-
-        return encoded_inputs.input_ids.cuda()
-
-    def translate(
-        self,
-        text: str,
-        max_length: int = 512,
-        generation_config: GenerationConfig | None = None,
-        translation_prompt: t.Callable[[str], str] | None = None,
-    ) -> str:
-        if translation_prompt is None:
-            input_ids = self._prepare_data(text, max_length=max_length)
-        else:
-            prompt = translation_prompt(text)
-            input_ids = self._prepare_data(prompt, max_length=max_length)
-
-        with torch.no_grad():
-            outputs = self.model.generate(input_ids=input_ids, generation_config=generation_config)
-            decoded = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
-
-        return self.post_processing(decoded)
-
-    def post_processing(self, text: str) -> str:
-        return text
-
-
-class ALMATranslator(Translator):
-    def __init__(self, model_name: str):
-        super().__init__(model_name)
-
-    @staticmethod
-    def from_target_lang(target_lang: str):
-        model_name = get_xalma_model_name_by_lang(target_lang)
-        return ALMATranslator(model_name)
-
-    @staticmethod
-    def from_group(group_id: int):
-        model_name = get_xalma_model_name_by_group(group_id)
-        return ALMATranslator(model_name)
-
-    @t.override
-    def _prepare_prompt(self, prompt: str) -> str:
-        chat_template = [{"role": "user", "content": prompt}]
-
-        return self.tokenizer.apply_chat_template(chat_template, tokenize=False, add_generation_prompt=True)  # type: ignore  # noqa: PGH003
-
-    def post_process(self, text: str) -> str:
-        if "[/INST]" in text:
-            return text.split("[/INST]")[1]
-
-        return text
+from translator import ALMATranslator
 
 
 if __name__ == "__main__":
-    import argparse
-
     parser = argparse.ArgumentParser(description="Translate using the ALMA model.")
-    parser.add_argument("--model-name", type=str, default="haoranxu/ALMA-7B", help="Huggingface model.")
-    parser.add_argument("--source-lang", type=str, default="en", help="Source language.", required=True)
-    parser.add_argument("--target-lang", type=str, default="it", help="Target language.", required=True)
-    parser.add_argument("--dataset-name", type=str, default="PKU-Alignment/BeaverTails", help="Huggingface dataset.")
-    parser.add_argument("--dataset-split", type=str, default="330k_test", help="Dataset split to use.")
+    # Model arguments
+    parser.add_argument("--model-name", type=str, default="haoranxu/X-ALMA-13B-Group2", help="Huggingface model.")
+    parser.add_argument("--max-length", type=int, default=512, help="Maximum length for tokenized input.")
+    # Generation arguments
     parser.add_argument("--num-beams", type=int, default=5, help="Number of beams for beam search.")
     parser.add_argument("--max-new-tokens", type=int, default=512, help="Maximum number of new tokens to generate.")
     parser.add_argument("--temperature", type=float, default=0.6, help="Temperature.")
     parser.add_argument("--top-p", type=float, default=0.9, help="Nucleus sampling probability.")
     parser.add_argument("--do-sample", action="store_true", help="Enable sampling.")
-    parser.add_argument("--max-length", type=int, default=512, help="Maximum length for tokenized input.")
+    # Saving arguments
+    parser.add_argument("--save-to-disk", action="store_true", help="Save dataset to disk.")
+    parser.add_argument("--push-to-hub", action="store_true", help="Push dataset to Huggingface Hub.")
 
     args = parser.parse_args()
 
-    model = ALMATranslator.from_target_lang(args.target_lang)
+    model = ALMATranslator(args.model_name)
 
     gen_config = GenerationConfig(
         num_beams=args.num_beams,
@@ -120,27 +35,34 @@ if __name__ == "__main__":
         top_p=args.top_p,
     )
 
-    def get_translation_prompt(source_lang: str, target_lang: str) -> t.Callable[[str], str]:
-        src_name = get_language_name(source_lang)
-        tgt_name = get_language_name(target_lang)
+    def en_to_it_prompt(text) -> str:
+        return f"Translate this from English to Italian:\nEnglish: {text}\nItalian:"
 
-        return lambda text: f"Translate this from {src_name} to {tgt_name}:\n{src_name}: {text}\n{tgt_name}:"
-
-    dataset = load_dataset(args.dataset_name, split=args.dataset_split)
-
-    for example in tqdm(dataset):
-        prompt = model.translate(
+    def translate(example):
+        prompt_it = model.translate(
             example["prompt"],
             max_length=args.max_length,
             generation_config=gen_config,
-            translation_prompt=get_translation_prompt(args.source_lang, args.target_lang),
+            translation_prompt=en_to_it_prompt,
         )
-        response = model.translate(
+
+        response_it = model.translate(
             example["response"],
             max_length=args.max_length,
             generation_config=gen_config,
-            translation_prompt=get_translation_prompt(args.source_lang, args.target_lang),
+            translation_prompt=en_to_it_prompt,
         )
 
-        print(f"Prompt: {prompt}")
-        print(f"Response: {response}")
+        return {"prompt_it": prompt_it, "response_it": response_it}
+
+    for split in ["330k_test", "330k_train"]:
+        dataset = load_dataset("PKU-Alignment/BeaverTails", split=split)
+        dataset = dataset.map(translate)
+
+        if args.save_to_disk:
+            DATA_PATH_DIR = Path("data", "BeaverTails-it", split)
+            DATA_PATH_DIR.mkdir(exist_ok=True, parents=True)
+            dataset.save_to_disk(DATA_PATH_DIR)
+
+        if args.push_to_hub:
+            dataset.push_to_hub("saiteki-kai/BeaverTails-it", split=split)
