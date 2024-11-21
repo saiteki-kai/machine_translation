@@ -9,7 +9,7 @@ from transformers import GenerationConfig
 from src.translation.translator import ALMATranslator
 
 
-if __name__ == "__main__":
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Translate using the ALMA model.")
     # Model arguments
     parser.add_argument("--model-name", type=str, default="haoranxu/X-ALMA-13B-Group2", help="Huggingface model.")
@@ -36,6 +36,12 @@ if __name__ == "__main__":
 
     if args.save_to_disk and args.output_dir is None:
         parser.error("--save-to-disk requires --output-dir")
+
+    return args
+
+
+if __name__ == "__main__":
+    args = parse_args()
 
     model = ALMATranslator(args.model_name)
 
