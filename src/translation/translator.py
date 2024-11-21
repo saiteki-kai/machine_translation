@@ -57,9 +57,9 @@ class Translator:
             outputs = self._model.generate(input_ids=input_ids, generation_config=generation_config)
             decoded = self._tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
 
-        return self.post_processing(decoded)
+        return self.post_process(decoded)
 
-    def post_processing(self, text: str) -> str:
+    def post_process(self, text: str) -> str:
         return text
 
 
