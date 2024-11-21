@@ -18,6 +18,42 @@ datasets = "^3.1.0"
 [tool.poetry.group.dev.dependencies]
 huggingface-hub = "^0.26.2"
 
+[tool.ruff]
+fix = true
+show-fixes = true
+line-length = 119
+select = [
+    "F",
+    "E",
+    "W",
+    "I",
+    "C90",
+    "UP",
+    "S",
+    "B",
+    "A",
+    "COM",
+    "C4",
+    "T10",
+    "RET",
+    "ARG",
+    "PIE",
+    "PGH",
+    "TRY",
+    "PLR",
+    "SIM",
+    "PTH",
+    "NPY",
+    "TCH",
+    "RUF",
+    "SLF001",
+]
+
+[tool.ruff.isort]
+lines-after-imports = 2
+lines-between-types = 1
+combine-as-imports = true
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
