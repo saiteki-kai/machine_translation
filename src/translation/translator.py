@@ -1,4 +1,4 @@
-import typing as t
+from collections.abc import Callable
 
 import torch
 
@@ -13,7 +13,7 @@ from transformers import (
 
 
 class Translator:
-    model: PreTrainedModel | t.Callable
+    model: PreTrainedModel | Callable
     tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast
 
     def __init__(self, model_name: str):
@@ -43,7 +43,7 @@ class Translator:
         text: str,
         max_length: int = 512,
         generation_config: GenerationConfig | None = None,
-        translation_prompt: t.Callable[[str], str] | None = None,
+        translation_prompt: Callable[[str], str] | None = None,
     ) -> str:
         if translation_prompt is None:
             input_ids = self._prepare_data(text, max_length=max_length)
@@ -65,7 +65,6 @@ class ALMATranslator(Translator):
     def __init__(self, model_name: str):
         super().__init__(model_name)
 
-    @t.override
     def _prepare_prompt(self, prompt: str) -> str:
         chat_template = [{"role": "user", "content": prompt}]
 
