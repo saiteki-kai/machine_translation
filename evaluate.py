@@ -1,6 +1,8 @@
+import typing
+
 import numpy as np
 
-from datasets import load_dataset
+from datasets import Dataset, load_dataset
 
 from src.evaluation.metrics import comet_score, load_comet
 
@@ -10,6 +12,7 @@ if __name__ == "__main__":
 
     for split in ["330k_test", "330k_train"]:
         dataset = load_dataset("saiteki-kai/BeaverTails-it", split=split)
+        dataset = typing.cast(Dataset, dataset)
 
         data = [
             {"src": src, "mt": mt}

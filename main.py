@@ -1,8 +1,9 @@
 import argparse
+import typing
 
 from pathlib import Path
 
-from datasets import load_dataset
+from datasets import Dataset, load_dataset
 from transformers import GenerationConfig
 
 from src.translation.translator import ALMATranslator
@@ -46,10 +47,10 @@ if __name__ == "__main__":
         top_p=args.top_p,
     )
 
-    def en_to_it_prompt(text) -> str:
+    def en_to_it_prompt(text: str) -> str:
         return f"Translate this from English to Italian:\nEnglish: {text}\nItalian:"
 
-    def translate(example):
+    def translate(example: dict[str, str]) -> dict[str, str]:
         prompt_it = model.translate(
             example["prompt"],
             max_length=args.max_length,
@@ -67,7 +68,7 @@ if __name__ == "__main__":
         return {"prompt_it": prompt_it, "response_it": response_it}
 
     dataset = load_dataset(args.dataset_name, split=args.split)
-    dataset = dataset.map(translate)
+    dataset = typing.cast(Dataset, dataset.map(translate))
 
     if args.save_to_disk:
         data_path_dir = Path(args.output_dir, args.dataset_name.split("/")[-1], args.split)

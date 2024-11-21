@@ -1,3 +1,5 @@
+import typing
+
 from collections.abc import Callable
 
 import torch
@@ -13,14 +15,14 @@ from transformers import (
 
 
 class Translator:
-    model: PreTrainedModel | Callable
-    tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast
+    _model: PreTrainedModel | Callable
+    _tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast
 
-    def __init__(self, model_name: str):
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
+    def __init__(self, model_name: str) -> None:
+        self._model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto")
+        self._tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
 
-        self.model = torch.compile(self.model, mode="reduce-overhead")
+        self._model = torch.compile(self._model, mode="reduce-overhead")
 
     def _prepare_prompt(self, prompt: str) -> str:
         return prompt
@@ -28,7 +30,7 @@ class Translator:
     def _prepare_data(self, text: str, max_length: int = 512) -> dict[str, torch.Tensor]:
         prompt = self._prepare_prompt(text)
 
-        encoded_inputs = self.tokenizer(
+        encoded_inputs = self._tokenizer(
             prompt,
             return_tensors="pt",
             padding=True,
@@ -52,8 +54,8 @@ class Translator:
             input_ids = self._prepare_data(prompt, max_length=max_length)
 
         with torch.no_grad():
-            outputs = self.model.generate(input_ids=input_ids, generation_config=generation_config)
-            decoded = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
+            outputs = self._model.generate(input_ids=input_ids, generation_config=generation_config)
+            decoded = self._tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
 
         return self.post_processing(decoded)
 
@@ -62,13 +64,14 @@ class Translator:
 
 
 class ALMATranslator(Translator):
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str) -> None:
         super().__init__(model_name)
 
     def _prepare_prompt(self, prompt: str) -> str:
-        chat_template = [{"role": "user", "content": prompt}]
+        conversation = [{"role": "user", "content": prompt}]
+        chat_prompt = self._tokenizer.apply_chat_template(conversation, tokenize=False, add_generation_prompt=True)
 
-        return self.tokenizer.apply_chat_template(chat_template, tokenize=False, add_generation_prompt=True)  # type: ignore  # noqa: PGH003
+        return typing.cast(str, chat_prompt)
 
     def post_process(self, text: str) -> str:
         if "[/INST]" in text:
