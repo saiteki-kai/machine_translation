@@ -5,7 +5,7 @@ from pathlib import Path
 from datasets import load_dataset
 from transformers import GenerationConfig
 
-from translator import ALMATranslator
+from src.translation.translator import ALMATranslator
 
 
 if __name__ == "__main__":
