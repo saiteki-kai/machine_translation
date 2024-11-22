@@ -22,20 +22,27 @@ Translate the dataset using the [X-ALMA](https://github.com/fe1ixxu/ALMA) model:
 python translate.py \
     --model-name "haoranxu/X-ALMA-13B-Group2" \
     --max-length 512 \
-    --dataset-name "haoranxu/BeaverTails" --split "330k_test" \
-    --num-beams 5 --max-new-tokens 512 --temperature 0.6 --top-p 0.9 --do-sample \
-    --save-to-disk --output-dir "data" \
-    --push-to-hub --repo-name "saiteki-kai/BeaverTails-it"
+    --dataset-name "PKU-Alignment/BeaverTails" \
+    --split "330k_test" \
+    --num-beams 5 \
+    --max-new-tokens 512 \
+    --temperature 0.6 \
+    --top-p 0.9 \
+    --do-sample \
+    --save-to-disk \
+    --output-dir "data" \
+    --push-to-hub \
+    --repo-name "saiteki-kai/BeaverTails-it"
 ```
 
 Evaluate the translations using the [COMET](https://github.com/Unbabel/COMET) model:
 
 ```bash
 python evaluate.py \
-    --dataset-name "saiteki-kai/BeaverTails-it" --split "330k_test" \
-    --batch-size 32 \
     --comet-model "Unbabel/wmt22-cometkiwi-da" \
-
+    --dataset-name "saiteki-kai/BeaverTails-it" \
+    --split "330k_test" \
+    --batch-size 32
 ```
 
 ## TODO
