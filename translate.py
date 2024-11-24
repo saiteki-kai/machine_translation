@@ -21,6 +21,7 @@ def main(args: argparse.Namespace) -> None:
         model = ConversationalTranslator(args.model_name, post_processing=post_processing)
     else:
         model = Translator(args.model_name)
+
     model.compile()
 
     gen_config = GenerationConfig(
@@ -68,7 +69,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset-name", type=str, default="PKU-Alignment/BeaverTails", help="Huggingface dataset.")
     parser.add_argument("--split", type=str, default="30k_test", help="Dataset split.")
     parser.add_argument("--fields", type=str, nargs="+", default="prompt,response", help="Fields to translate.")
-    parser.add_argument("--suffix", type=str, default="it", help="Suffix for translated fields.")
+    parser.add_argument("--suffix", type=str, default="_it", help="Suffix for translated fields.")
     # Generation arguments
     parser.add_argument("--num-beams", type=int, default=5, help="Number of beams for beam search.")
     parser.add_argument("--max-new-tokens", type=int, default=512, help="Maximum number of new tokens to generate.")

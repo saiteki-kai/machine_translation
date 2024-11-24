@@ -44,7 +44,9 @@ python evaluate.py \
     --comet-model "Unbabel/wmt22-cometkiwi-da" \
     --dataset-name "saiteki-kai/BeaverTails-it" \
     --split "330k_test" \
-    --batch-size 32
+    --batch-size 32 \
+    --fields "prompt" "response" \
+    --suffix "_it"
 ```
 
 ## TODO
