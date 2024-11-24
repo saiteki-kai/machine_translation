@@ -17,6 +17,7 @@ from transformers import (
 class Translator:
     _model: PreTrainedModel | Callable
     _tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast
+    _post_processing: Callable[[str], str] | None
 
     def __init__(self, model_name: str, post_processing: Callable[[str], str] | None = None) -> None:
         self._model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto")
