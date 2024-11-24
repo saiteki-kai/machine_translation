@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     # Dataset arguments
     parser.add_argument("--dataset-name", type=str, required=True, help="Huggingface dataset.")
     parser.add_argument("--split", type=str, required=True, help="Dataset split.")
-    parser.add_argument("--fields", type=str, nargs="+", default="prompt response", help="Fields to evaluate.")
+    parser.add_argument("--fields", type=str, nargs="+", default=["prompt", "response"], help="Fields to evaluate.")
     parser.add_argument("--suffix", type=str, default="_it", help="Suffix for translated fields.")
 
     return parser.parse_args()
