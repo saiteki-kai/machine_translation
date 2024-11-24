@@ -1,5 +1,9 @@
 import argparse
+import json
+import logging.config
 import typing
+
+from pathlib import Path
 
 import numpy as np
 
@@ -8,20 +12,50 @@ from datasets import Dataset, load_dataset
 from src.evaluation.metrics import comet_score, load_comet
 
 
+logger = logging.getLogger("evaluation")
+
+
+def setup_logging(config_path: Path):
+    with config_path.open() as f:
+        config = json.load(f)
+
+    logging.config.dictConfig(config)
+
+
 def main(args: argparse.Namespace) -> None:
+    logger.debug("Arguments:")
+    for k, v in vars(args).items():
+        logger.debug(f"\t{k}: {v}")
+
+    # Load the dataset
     dataset = load_dataset(args.dataset_name, split=args.split)
     dataset = typing.cast(Dataset, dataset)
+    logger.info(f"Dataset '{args.dataset_name}' (split: {args.split}) loaded.")
+    logger.debug(f"Dataset size: {len(dataset)}")
 
-    print(f"Dataset: {args.dataset_name}")
-    print(f"Split: {args.split}")
+    # Load the model
+    model = load_comet(args.comet_model)
+    logger.info(f"Model '{args.comet_model}' loaded.")
+
+    total_scores = []
 
     for field in args.fields:
+        # Check if the fields are present in the dataset
+        if field not in dataset.column_names or (field + args.suffix) not in dataset.column_names:
+            logger.error(f"Field '{field}' and '{field + args.suffix}' must be present in the dataset.")
+            continue
+
+        # Prepare data for the model input
         data = [{"src": src, "mt": mt} for src, mt in zip(dataset[field], dataset[field + args.suffix], strict=True)]
 
-        model = load_comet(args.comet_model)
+        # Evaluate the translations using COMET (reference-free metric)
+        logger.info(f"Starting evaluation for {field}")
         scores, _ = comet_score(model, data, batch_size=args.batch_size)
+        total_scores.extend(scores)
 
-    print(f"{field} score: {np.mean(scores):.2f} ± {np.std(scores):.2f}")
+        logger.info(f"{field.capitalize()} score: {np.mean(scores):.2f} ± {np.std(scores):.2f}")
+
+    logger.info(f"Total score: {np.mean(total_scores):.2f} ± {np.std(total_scores):.2f}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,4 +74,5 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     args = parse_args()
+    setup_logging(config_path=Path("configs") / "logging.json")
     main(args)

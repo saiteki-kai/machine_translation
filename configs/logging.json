@@ -1,0 +1,57 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "simple": {
+            "format": "%(levelname)s: %(message)s"
+        },
+        "verbose": {
+            "format": "%(asctime)s | %(levelname)-8s | %(module)-16s | %(message)s",
+            "datefmt": "%Y-%m-%dT%H:%M:%S%z"
+        }
+    },
+    "handlers": {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "level": "INFO",
+            "stream": "ext://sys.stdout"
+        },
+        "stderr": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "level": "WARNING",
+            "stream": "ext://sys.stderr"
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": "DEBUG",
+            "formatter": "verbose",
+            "maxBytes": 1000000,
+            "backupCount": 3,
+            "filename": "logs/evaluation.log"
+        }
+    },
+    "loggers": {
+        "root": {
+            "handlers": [
+                "stdout"
+            ],
+            "level": "INFO"
+        },
+        "evaluation": {
+            "handlers": [
+                "file",
+                "stderr"
+            ],
+            "level": "DEBUG"
+        },
+        "src": {
+            "handlers": [
+                "file",
+                "stderr"
+            ],
+            "level": "DEBUG"
+        }
+    }
+}
