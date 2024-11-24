@@ -24,6 +24,8 @@ python translate.py \
     --max-length 512 \
     --dataset-name "PKU-Alignment/BeaverTails" \
     --split "330k_test" \
+    --fields "prompt" "response" \
+    --suffix "_it" \
     --num-beams 5 \
     --max-new-tokens 512 \
     --temperature 0.6 \

@@ -18,20 +18,14 @@ class Translator:
     _model: PreTrainedModel | Callable
     _tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, post_processing: Callable[[str], str] | None = None) -> None:
         self._model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto")
         self._tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
-
-        self._model = torch.compile(self._model, mode="reduce-overhead")
-
-    def _prepare_prompt(self, prompt: str) -> str:
-        return prompt
+        self._post_processing = post_processing
 
     def _prepare_data(self, text: str, max_length: int = 512) -> dict[str, torch.Tensor]:
-        prompt = self._prepare_prompt(text)
-
         encoded_inputs = self._tokenizer(
-            prompt,
+            text,
             return_tensors="pt",
             padding=True,
             max_length=max_length,
@@ -57,24 +51,34 @@ class Translator:
             outputs = self._model.generate(input_ids=input_ids, generation_config=generation_config)
             decoded = self._tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
 
-        return self.post_process(decoded)
+        if self._post_processing is None:
+            return decoded
 
-    def post_process(self, text: str) -> str:
-        return text
+        return self._post_processing(decoded)
+
+    def compile(self, mode: str = "reduce-overhead"):
+        self._model = torch.compile(self._model, mode=mode)
 
 
-class ALMATranslator(Translator):
-    def __init__(self, model_name: str) -> None:
-        super().__init__(model_name)
+class ConversationalTranslator(Translator):
+    def __init__(self, model_name: str, post_processing: Callable[[str], str] | None = None) -> None:
+        super().__init__(model_name, post_processing)
 
-    def _prepare_prompt(self, prompt: str) -> str:
-        conversation = [{"role": "user", "content": prompt}]
+    def _prepare_prompt(self, conversation: list[dict[str, str]] | str) -> str:
+        if isinstance(conversation, str):
+            conversation = [{"role": "user", "content": conversation}]
+
         chat_prompt = self._tokenizer.apply_chat_template(conversation, tokenize=False, add_generation_prompt=True)
 
         return typing.cast(str, chat_prompt)
 
-    def post_process(self, text: str) -> str:
-        if "[/INST]" in text:
-            return text.split("[/INST]")[1]
+    def translate(
+        self,
+        conversation: list[dict[str, str]] | str,
+        max_length: int = 512,
+        generation_config: GenerationConfig | None = None,
+        translation_prompt: Callable[[str], str] | None = None,
+    ) -> str:
+        text = self._prepare_prompt(conversation)
 
-        return text
+        return super().translate(text, max_length, generation_config, translation_prompt)

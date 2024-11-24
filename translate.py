@@ -6,11 +6,22 @@ from pathlib import Path
 from datasets import Dataset, load_dataset
 from transformers import GenerationConfig
 
-from src.translation.translator import ALMATranslator
+from src.translation.translator import ConversationalTranslator, Translator
 
 
 def main(args: argparse.Namespace) -> None:
-    model = ALMATranslator(args.model_name)
+    if "x-alma" in args.model_name.lower():
+
+        def post_processing(text: str) -> str:
+            if "[/INST]" in text:
+                text = text.split("[/INST]")[1]
+
+            return text.strip()
+
+        model = ConversationalTranslator(args.model_name, post_processing=post_processing)
+    else:
+        model = Translator(args.model_name)
+    model.compile()
 
     gen_config = GenerationConfig(
         num_beams=args.num_beams,
@@ -23,22 +34,18 @@ def main(args: argparse.Namespace) -> None:
     def en_to_it_prompt(text: str) -> str:
         return f"Translate this from English to Italian:\nEnglish: {text}\nItalian:"
 
-    def translate(example: dict[str, str]) -> dict[str, str]:
-        prompt_it = model.translate(
-            example["prompt"],
-            max_length=args.max_length,
-            generation_config=gen_config,
-            translation_prompt=en_to_it_prompt,
-        )
+    def translate(example: dict[str | list[dict[str, str]], str]) -> dict[str, str]:
+        translations = {}
 
-        response_it = model.translate(
-            example["response"],
-            max_length=args.max_length,
-            generation_config=gen_config,
-            translation_prompt=en_to_it_prompt,
-        )
+        for field in args.fields:
+            translations[field + args.suffix] = model.translate(
+                example[field],
+                max_length=args.max_length,
+                generation_config=gen_config,
+                translation_prompt=en_to_it_prompt,
+            )
 
-        return {"prompt_it": prompt_it, "response_it": response_it}
+        return translations
 
     dataset = load_dataset(args.dataset_name, split=args.split)
     dataset = typing.cast(Dataset, dataset.map(translate))
@@ -60,6 +67,8 @@ def parse_args() -> argparse.Namespace:
     # Dataset arguments
     parser.add_argument("--dataset-name", type=str, default="PKU-Alignment/BeaverTails", help="Huggingface dataset.")
     parser.add_argument("--split", type=str, default="30k_test", help="Dataset split.")
+    parser.add_argument("--fields", type=str, nargs="+", default="prompt,response", help="Fields to translate.")
+    parser.add_argument("--suffix", type=str, default="it", help="Suffix for translated fields.")
     # Generation arguments
     parser.add_argument("--num-beams", type=int, default=5, help="Number of beams for beam search.")
     parser.add_argument("--max-new-tokens", type=int, default=512, help="Maximum number of new tokens to generate.")
