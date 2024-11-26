@@ -21,13 +21,13 @@ Translate the dataset using the [X-ALMA](https://github.com/fe1ixxu/ALMA) model:
 ```bash
 python translate.py \
     --model-name "haoranxu/X-ALMA-13B-Group2" \
-    --max-length 512 \
+    --max-length 400 512 \
     --dataset-name "PKU-Alignment/BeaverTails" \
     --split "330k_test" \
     --fields "prompt" "response" \
     --suffix "_it" \
     --num-beams 5 \
-    --max-new-tokens 512 \
+    --max-new-tokens 400 512 \
     --temperature 0.6 \
     --top-p 0.9 \
     --do-sample \
