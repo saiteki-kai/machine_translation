@@ -21,7 +21,7 @@ class Translator:
 
     def __init__(self, model_name: str, post_processing: Callable[[str], str] | None = None) -> None:
         self._model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, device_map="auto")
-        self._tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
+        self._tokenizer = AutoTokenizer.from_pretrained(model_name)
         self._post_processing = post_processing
 
     def _prepare_data(self, text: str, max_length: int = 512) -> dict[str, torch.Tensor]:

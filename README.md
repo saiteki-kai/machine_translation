@@ -55,7 +55,6 @@ python evaluate.py \
 - [x] compute translation quality metrics (reference-free)
 - [x] compute translation quality heuristics (e.g. length ratio, question preserved)
 - [x] save translations
-- [ ] define which hyperparameters to use (beam size, temperature, top-p, max_new_tokens)
+- [x] adapt the translate.py script for the beavertails-evaluation dataset (field selection)
 - [ ] create the italian version of the dataset
-- [ ] adapt the translate.py script for the beavertails-evaluation dataset
 - [ ] translate other benchmark datasets

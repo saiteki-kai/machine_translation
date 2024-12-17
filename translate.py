@@ -10,7 +10,7 @@ from src.translation.translator import ConversationalTranslator, Translator
 
 
 def main(args: argparse.Namespace) -> None:
-    if "x-alma" in args.model_name.lower():
+    if any(model in args.model_name.lower() for model in ["x-alma", "towerinstruct"]):
 
         def post_processing(text: str) -> str:
             if "[/INST]" in text:
@@ -42,7 +42,13 @@ def main(args: argparse.Namespace) -> None:
         )
 
     def en_to_it_prompt(text: str) -> str:
-        return f"Translate this from English to Italian:\nEnglish: {text}\nItalian:"
+        if "alma" in args.model_name.lower():
+            return f"Translate this from English to Italian:\nEnglish: {text}\nItalian:"
+
+        if "towerinstruct" in args.model_name.lower():
+            return f"Translate the following text from English to Italian:\nEnglish: {text}\nItalian:"
+
+        return text
 
     def translate(example: dict[str | list[dict[str, str]], str]) -> dict[str, str]:
         translations = {}
@@ -70,7 +76,7 @@ def main(args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Translate using the ALMA model.")
+    parser = argparse.ArgumentParser(description="Translate using a decoder-only transformer model.")
     # Model arguments
     parser.add_argument("--model-name", type=str, default="haoranxu/X-ALMA-13B-Group2", help="Huggingface model.")
     parser.add_argument("--max-length", type=int, nargs="+", default=[512], help="Maximum length for tokenized input.")
