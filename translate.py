@@ -10,18 +10,7 @@ from src.translation.translator import ConversationalTranslator, Translator
 
 
 def main(args: argparse.Namespace) -> None:
-    if any(model in args.model_name.lower() for model in ["x-alma", "towerinstruct"]):
-
-        def post_processing(text: str) -> str:
-            if "[/INST]" in text:
-                text = text.split("[/INST]")[1]
-
-            return text.strip()
-
-        model = ConversationalTranslator(args.model_name, post_processing=post_processing)
-    else:
-        model = Translator(args.model_name)
-
+    model = get_model(args.model_name)
     model.compile()
 
     fields_params = {
@@ -41,15 +30,6 @@ def main(args: argparse.Namespace) -> None:
             top_p=args.top_p,
         )
 
-    def en_to_it_prompt(text: str) -> str:
-        if "alma" in args.model_name.lower():
-            return f"Translate this from English to Italian:\nEnglish: {text}\nItalian:"
-
-        if "towerinstruct" in args.model_name.lower():
-            return f"Translate the following text from English to Italian:\nEnglish: {text}\nItalian:"
-
-        return text
-
     def translate(example: dict[str | list[dict[str, str]], str]) -> dict[str, str]:
         translations = {}
 
@@ -58,7 +38,7 @@ def main(args: argparse.Namespace) -> None:
                 example[field],
                 max_length=fields_params[field]["max_length"],
                 generation_config=gen_config(field),
-                translation_prompt=en_to_it_prompt,
+                translation_prompt=lambda text: en_to_it_prompt(args.model_name, text),
             )
 
         return translations
@@ -75,6 +55,38 @@ def main(args: argparse.Namespace) -> None:
         dataset.push_to_hub(args.repo_name, split=args.split)
 
 
+def get_model(model_name):
+    if any(model in model_name.lower() for model in ["x-alma", "towerinstruct"]):
+        if "x-alma" in model_name.lower():
+
+            def post_processing(text: str) -> str:
+                if "[/INST]" in text:
+                    text = text.split("[/INST]")[1]
+
+                return text.strip()
+        else:
+
+            def post_processing(text: str) -> str:
+                if "Italian:" in text:
+                    text = text.split("Italian:")[1]
+
+                return text.strip()
+
+        return ConversationalTranslator(model_name, post_processing=post_processing)
+
+    return Translator(model_name)
+
+
+def en_to_it_prompt(model_name: str, text: str) -> str:
+    if "alma" in model_name.lower():
+        return f"Translate this from English to Italian:\nEnglish: {text}\nItalian:"
+
+    if "towerinstruct" in model_name.lower():
+        return f"Translate the following text from English to Italian:\nEnglish: {text}\nItalian:"
+
+    return text
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Translate using a decoder-only transformer model.")
     # Model arguments
@@ -87,7 +99,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--suffix", type=str, default="_it", help="Suffix for translated fields.")
     # Generation arguments
     parser.add_argument("--num-beams", type=int, default=5, help="Number of beams for beam search.")
-    parser.add_argument("--max-new-tokens", type=int, nargs="+", default=[512], help="Maximum number of new tokens to generate.")  # noqa: E501
+    parser.add_argument(
+        "--max-new-tokens", type=int, nargs="+", default=[512], help="Maximum number of new tokens to generate."
+    )  # noqa: E501
     parser.add_argument("--temperature", type=float, default=0.6, help="Temperature.")
     parser.add_argument("--top-p", type=float, default=0.9, help="Nucleus sampling probability.")
     parser.add_argument("--do-sample", action="store_true", help="Enable sampling.")
