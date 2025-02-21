@@ -68,7 +68,7 @@ def get_model(model_name):
 
             def post_processing(text: str) -> str:
                 if "Italian:" in text:
-                    text = text.split("Italian:")[1]
+                    text = text.split("Italian:")[2]
 
                 return text.strip()
 
@@ -79,10 +79,10 @@ def get_model(model_name):
 
 def en_to_it_prompt(model_name: str, text: str) -> str:
     if "alma" in model_name.lower():
-        return f"Translate this from English to Italian:\nEnglish: {text}\nItalian:"
+        return f"Translate this from English into Italian:\nEnglish: {text}\nItalian:"
 
     if "towerinstruct" in model_name.lower():
-        return f"Translate the following text from English to Italian:\nEnglish: {text}\nItalian:"
+        return f"Translate the following text from English into Italian:\nEnglish: {text}\nItalian:"
 
     return text
 
@@ -101,7 +101,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-beams", type=int, default=5, help="Number of beams for beam search.")
     parser.add_argument(
         "--max-new-tokens", type=int, nargs="+", default=[512], help="Maximum number of new tokens to generate."
-    )  # noqa: E501
+    )
     parser.add_argument("--temperature", type=float, default=0.6, help="Temperature.")
     parser.add_argument("--top-p", type=float, default=0.9, help="Nucleus sampling probability.")
     parser.add_argument("--do-sample", action="store_true", help="Enable sampling.")
