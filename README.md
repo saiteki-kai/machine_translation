@@ -48,13 +48,3 @@ python evaluate.py \
     --fields "prompt" "response" \
     --suffix "_it"
 ```
-
-## TODO
-
-- [x] compute dataset statistics (e.g. max length, average length, total number of tokens)
-- [x] compute translation quality metrics (reference-free)
-- [x] compute translation quality heuristics (e.g. length ratio, question preserved)
-- [x] save translations
-- [x] adapt the translate.py script for the beavertails-evaluation dataset (field selection)
-- [ ] create the italian version of the dataset
-- [ ] translate other benchmark datasets
